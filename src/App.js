@@ -3,30 +3,70 @@ import React, { Component } from "react";
 import List from "./List";
 import Input from "./Input";
 import Title from "./Title";
+import { VisibilityFilters } from "./constants";
+import Footer from "./Footer";
 
 export default class App extends Component {
+  key = 0;
   state = {
-    todos: ["Click to remove", "Learn React", "Write Code", "Ship App"]
+    todos: [
+      { text: "eat", id: this.key++, completed: false },
+      { text: "drink", id: this.key++, completed: false },
+      { text: "be merry", id: this.key++, completed: false }
+    ],
+    visibilityFilter: VisibilityFilters.SHOW_ALL
   };
 
   onAddTodo = text => {
     const { todos } = this.state;
 
     this.setState({
-      todos: [text, ...todos]
+      ...this.state,
+      todos: [{ text, id: this.key++, completed: false }, ...todos]
     });
   };
 
-  onRemoveTodo = index => {
+  onToggleTodo = index => {
     const { todos } = this.state;
 
+    console.log("toggle " + index);
+
     this.setState({
-      todos: todos.filter((todo, i) => i !== index)
+      todos: todos.map((todo, i) => {
+        if (todo.id === index) {
+          return { ...todo, completed: !todo.completed };
+        } else {
+          return todo;
+        }
+      })
+    });
+  };
+
+  onUpdateVisibilityFilter = visibility => {
+    console.log("new visibility: " + visibility);
+    this.setState({
+      ...this.state,
+      visibilityFilter: visibility
+    });
+  };
+
+  onDeleteTodo = index => {
+    const { todos } = this.state;
+    this.setState({
+      ...this.state,
+      todos: todos.filter(todo => todo.id !== index)
     });
   };
 
   render() {
-    const { todos } = this.state;
+    const { todos, visibilityFilter } = this.state;
+
+    let visibleTodos = todos;
+    if (visibilityFilter === VisibilityFilters.SHOW_ACTIVE) {
+      visibleTodos = todos.filter(todo => !todo.completed);
+    } else if (visibilityFilter === VisibilityFilters.SHOW_COMPLETED) {
+      visibleTodos = todos.filter(todo => todo.completed);
+    }
 
     return (
       <div style={styles.container}>
@@ -35,7 +75,15 @@ export default class App extends Component {
           placeholder={"Type a todo, then hit enter!"}
           onSubmitEditing={this.onAddTodo}
         />
-        <List list={todos} onClickItem={this.onRemoveTodo} />
+        <List
+          list={visibleTodos}
+          onToggleTodo={this.onToggleTodo}
+          onDeleteTodo={this.onDeleteTodo}
+        />
+        <Footer
+          currentFilter={this.state.visibilityFilter}
+          onUpdateVisibilityFilter={this.onUpdateVisibilityFilter}
+        />
       </div>
     );
   }
