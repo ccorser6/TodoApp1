@@ -3,63 +3,67 @@ import React, { Component } from "react";
 import List from "./List";
 import Input from "./Input";
 import Title from "./Title";
-import { VisibilityFilters } from "./constants";
 import Footer from "./Footer";
+import { VisibilityFilters } from "./constants";
 
-export default class App extends Component {
-  key = 0;
-  state = {
-    todos: [
-      { text: "eat", id: this.key++, completed: false },
-      { text: "drink", id: this.key++, completed: false },
-      { text: "be merry", id: this.key++, completed: false }
-    ],
-    visibilityFilter: VisibilityFilters.SHOW_ALL
+import { connect } from "react-redux";
+import { actionCreators } from "./TodoListRedux";
+import { todosRef } from "./firebase";
+
+const mapStateToProps = state => ({
+  todos: state.todos,
+  visibilityFilter: state.visibilityFilter
+});
+
+class App extends Component {
+  fetchTodos = () => async dispatch => {
+    dispatch(actionCreators.fetchTodosPending());
+    todosRef.on("value", snapshot => {
+      let todos = snapshot.val();
+      console.log("snapshot:");
+      console.log(todos);
+      let newTodos = [];
+      for (let key in todos) {
+        newTodos.push({
+          id: key,
+          text: todos[key].text,
+          completed: todos[key].completed
+        });
+      }
+      console.log("newTodos:");
+      console.log(newTodos);
+      dispatch(actionCreators.fetchTodosSuccess(newTodos));
+    });
   };
+
+  componentDidMount() {
+    const { dispatch } = this.props;
+    dispatch(this.fetchTodos());
+  }
 
   onAddTodo = text => {
-    const { todos } = this.state;
-
-    this.setState({
-      ...this.state,
-      todos: [{ text, id: this.key++, completed: false }, ...todos]
-    });
+    const { dispatch } = this.props;
+    dispatch(actionCreators.add({ text, completed: false }));
   };
 
-  onToggleTodo = index => {
-    const { todos } = this.state;
-
-    console.log("toggle " + index);
-
-    this.setState({
-      todos: todos.map((todo, i) => {
-        if (todo.id === index) {
-          return { ...todo, completed: !todo.completed };
-        } else {
-          return todo;
-        }
-      })
-    });
+  onToggleTodo = todo => {
+    todo.completed = !todo.completed;
+    const { dispatch } = this.props;
+    dispatch(actionCreators.update(todo));
   };
 
   onUpdateVisibilityFilter = visibility => {
-    console.log("new visibility: " + visibility);
-    this.setState({
-      ...this.state,
-      visibilityFilter: visibility
-    });
+    const { dispatch } = this.props;
+    dispatch(actionCreators.setVisibilityFilter(visibility));
   };
 
-  onDeleteTodo = index => {
-    const { todos } = this.state;
-    this.setState({
-      ...this.state,
-      todos: todos.filter(todo => todo.id !== index)
-    });
+  onDeleteTodo = id => {
+    const { dispatch } = this.props;
+    dispatch(actionCreators.remove(id));
   };
 
   render() {
-    const { todos, visibilityFilter } = this.state;
+    const { todos, visibilityFilter } = this.props;
 
     let visibleTodos = todos;
     if (visibilityFilter === VisibilityFilters.SHOW_ACTIVE) {
@@ -81,7 +85,7 @@ export default class App extends Component {
           onDeleteTodo={this.onDeleteTodo}
         />
         <Footer
-          currentFilter={this.state.visibilityFilter}
+          currentFilter={this.props.visibilityFilter}
           onUpdateVisibilityFilter={this.onUpdateVisibilityFilter}
         />
       </div>
@@ -95,3 +99,5 @@ const styles = {
     flexDirection: "column"
   }
 };
+
+export default connect(mapStateToProps)(App);
